@@ -9,3 +9,4 @@ target/
 *.pem
 credentials.txt
 dist
+logs
