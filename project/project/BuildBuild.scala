@@ -12,7 +12,8 @@ object BuildBuild extends Build {
     resolvers ++= Seq(
       "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/",
       "Typesafe ivy releases" at "http://repo.typesafe.com/typesafe/ivy-releases/",
-      "Sonatype snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/"
+      "Sonatype snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/",
+      "Sonatype releases" at "https://oss.sonatype.org/content/repositories/releases/"
     ),
     scalacOptions ++= Seq("-unchecked", "-deprecation")
   ) ++ sbtPlugins
@@ -21,7 +22,7 @@ object BuildBuild extends Build {
   def sbtPlugins = Seq(
     "com.typesafe.play" % "sbt-plugin" % "2.3.4",
     mleGroup %% "ssh-client" % "0.0.4",
-    mleGroup %% "sbt-packager" % "1.2.2",
+    mleGroup %% "sbt-packager" % "1.3.0",
     mleGroup %% "sbt-play" % "0.1.1"
   ) map addSbtPlugin
 

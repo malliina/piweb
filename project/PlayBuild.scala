@@ -14,7 +14,7 @@ object PlayBuild extends Build {
     retrieveManaged := false,
     fork in Test := true,
     libraryDependencies ++= Seq(
-      mleGroup %% "pi-utils" % "0.1.2",
+      mleGroup %% "pi-utils" % "0.1.1",
       mleGroup %% "play-base" % "0.1.2"),
     resolvers ++= Seq(
       "typesafe releases" at "http://repo.typesafe.com/typesafe/releases/",
