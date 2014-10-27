@@ -1,3 +1,5 @@
 GET        /                    controllers.Home.index
-GET        /ws                  controllers.Home.openSocket
+GET        /logs                controllers.Logs.logs
+GET        /ws/pi               controllers.Home.openSocket
+GET        /ws/logs             controllers.Logs.openSocket
 GET        /assets/*file        controllers.Assets.at(path = "/public", file)

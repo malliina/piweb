@@ -1,20 +1,17 @@
 package controllers
 
 import com.mle.pi.PiRevB2
-import com.mle.play.controllers.{AuthResult, Streaming}
-import com.mle.play.ws.SyncAuth
+import com.mle.play.controllers.Streaming
 import com.pi4j.io.gpio.PinState
 import play.api.libs.json.{JsError, JsResult, JsValue, Json}
 import play.api.mvc._
 import rx.lang.scala.Observable
 
-import scala.util.Try
-
 /**
  *
  * @author mle
  */
-object Home extends Controller with Streaming with SyncAuth {
+object Home extends PiController with Streaming {
   val MSG = "msg"
   val PWM = "pwm"
   val ON = "on"
@@ -22,7 +19,16 @@ object Home extends Controller with Streaming with SyncAuth {
   val VALUE = "value"
   val NUMBER = "number"
 
-  val board = Try(new PiRevB2).toOption
+  val board = try {
+    Some(new PiRevB2)
+  } catch {
+    case e: Exception =>
+      log.warn(s"Unable to initialize Raspberry Pi.", e)
+      None
+    case ule: UnsatisfiedLinkError =>
+      log.warn(s"Link error", ule)
+      None
+  }
   //  def snapshot = board.ppins.map(prov => PinInfo(prov.number, prov.outPin.getState, prov.enableState))
   val testSnapshot = Seq(PinInfo(1, PinState.HIGH, PinState.HIGH), PinInfo(2, PinState.LOW, PinState.HIGH))
 
@@ -34,7 +40,6 @@ object Home extends Controller with Streaming with SyncAuth {
 
   override def jsonEvents: Observable[JsValue] = Observable.empty
 
-  override def authenticate(implicit req: RequestHeader): Option[AuthSuccess] = Some(AuthResult("test"))
 
   override def openSocketCall: Call = routes.Home.openSocket
 

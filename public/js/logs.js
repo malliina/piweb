@@ -3,7 +3,8 @@ var webSocket;
 var tableContent;
 
 var onconnect = function (payload) {
-    webSocket.send(JSON.stringify({cmd: "subscribe"}));
+    var msg = JSON.stringify({cmd: "subscribe"});
+    webSocket.send(msg);
     setFeedback("Connected.");
 };
 var onmessage = function (payload) {

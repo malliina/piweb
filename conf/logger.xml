@@ -1,5 +1,9 @@
 <configuration>
     <conversionRule conversionWord="coloredLevel" converterClass="play.api.Logger$ColoredLevel"/>
+    <appender name="RX" class="com.mle.logbackrx.BasicBoundedReplayRxAppender">
+        <bufferSize>100</bufferSize>
+        <timeFormat>yyyy-MM-dd HH:mm:ss</timeFormat>
+    </appender>
     <appender name="FILE" class="ch.qos.logback.core.FileAppender">
         <file>${piweb.home}/logs/piweb.log</file>
         <encoder>
@@ -18,5 +22,6 @@
     <root level="INFO">
         <appender-ref ref="STDOUT"/>
         <appender-ref ref="FILE"/>
+        <appender-ref ref="RX"/>
     </root>
 </configuration>
