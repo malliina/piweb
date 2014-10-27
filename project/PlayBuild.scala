@@ -1,6 +1,7 @@
 import com.mle.sbt.unix.LinuxPlugin
 import com.mle.sbtplay.PlayProjects
 import com.typesafe.sbt.SbtNativePackager
+import sbt.Keys._
 import sbt._
 
 object PlayBuild extends Build {
