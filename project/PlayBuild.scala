@@ -13,7 +13,7 @@ object PlayBuild extends Build {
     retrieveManaged := false,
     fork in Test := true,
     libraryDependencies ++= Seq(
-      mleGroup %% "pi-utils" % "0.1.0",
+      mleGroup %% "pi-utils" % "0.1.2",
       mleGroup %% "play-base" % "0.1.2")
   )
 }
