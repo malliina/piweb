@@ -34,9 +34,6 @@ var send = function (json) {
 var sendCmd = function (word) {
     send({cmd: word});
 };
-var sendMsg = function (word, v) {
-    send({msg: word, value: v});
-};
 var onChecked = function (number, isChecked) {
     var message = isChecked ? "on" : "off";
     send({msg: message, number: number});
@@ -44,6 +41,6 @@ var onChecked = function (number, isChecked) {
 $(document).ready(function () {
     tableContent = $("#logTableBody");
     $("#pwm").change(function () {
-        sendMsg("pwm", this.value);
+        send({msg: "pwm", value: this.value, number: this.id});
     });
 });

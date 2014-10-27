@@ -1,8 +1,9 @@
 package controllers
 
-import com.mle.pi.PiRevB2
+import com.mle.pi.{PiRevB2, ProvisionedDigitalPin, ProvisionedPin, ProvisionedPwmPin}
+import com.mle.piweb.Snapshot
 import com.mle.play.controllers.Streaming
-import com.pi4j.io.gpio.PinState
+import com.pi4j.io.gpio.{GpioPin, GpioPinDigitalOutput, GpioPinPwmOutput, PinState}
 import play.api.libs.json.{JsError, JsResult, JsValue, Json}
 import play.api.mvc._
 import rx.lang.scala.Observable
@@ -26,13 +27,21 @@ object Home extends PiController with Streaming {
       log.warn(s"Unable to initialize Raspberry Pi.", e)
       None
     case ule: UnsatisfiedLinkError =>
-      log.warn(s"Link error", ule)
+      log.warn(s"Link error.", ule)
+      None
+    case err: Error =>
+      log.warn("Error.", err)
       None
   }
   //  def snapshot = board.ppins.map(prov => PinInfo(prov.number, prov.outPin.getState, prov.enableState))
-  val testSnapshot = Seq(PinInfo(1, PinState.HIGH, PinState.HIGH), PinInfo(2, PinState.LOW, PinState.HIGH))
+  val testSnapshot = Snapshot(
+    Seq(PinInfo(1, PinState.HIGH, PinState.HIGH), PinInfo(2, PinState.LOW, PinState.HIGH)),
+    Seq(PwmInfo(12, 128)))
 
-  def snapshot = board.fold(testSnapshot)(b => b.ppins.map(prov => PinInfo(prov.number, prov.outPin.getState, prov.enableState)))
+
+  def snapshot = board.fold(testSnapshot)(b => Snapshot(
+    b.ppins.map(prov => PinInfo(prov.number, prov.pin.getState, prov.enableState)),
+    b.ppwms.map(pwm => PwmInfo(pwm.number, pwm.pwm))))
 
   def index = Action(implicit req => {
     Ok(views.html.index(snapshot))
@@ -45,32 +54,38 @@ object Home extends PiController with Streaming {
 
   override def onMessage(msg: Message, client: Client): Unit = {
     super.onMessage(msg, client)
-    parseMessage(msg) map handleMessage
+    parseMessage(msg) map handleMessage //recoverTotal (err => log.warn(s"Invalid JSON: $msg", err))
   }
 
   def parseMessage(json: JsValue): JsResult[PiMessage] = (json \ MSG).validate[String].flatMap {
-    case PWM => (json \ VALUE).validate[String].map(_.toInt).map(Pwm.apply)
+    case PWM => json.validate[Pwm]
     case ON => json.validate[DigitalOn]
     case OFF => json.validate[DigitalOff]
     case other => JsError(s"Unknown JSON message type: $other")
   }
 
   def handleMessage(msg: PiMessage) = msg match {
-    case Pwm(value) =>
-      log info s"PWM: $value, not yet implemented"
+    case Pwm(number, value) =>
+      findPwm(number).foreach(_.pwm = value)
+      log info s"PWM: $value to PIN: $number"
     case DigitalOn(number) =>
-      findPin(number).foreach(_.enable())
+      findDigital(number).foreach(_.enable())
       log info s"On: $number"
     case DigitalOff(number) =>
-      findPin(number).foreach(_.disable())
+      findDigital(number).foreach(_.disable())
       log info s"Off: $number"
   }
 
-  def findPin(number: Int) = board.flatMap(_.ppins.find(_.number == number))
+  def findPwm(number: Int) = find[GpioPinPwmOutput, ProvisionedPwmPin](number, _.ppwms) // board.flatMap(_.ppwms.find(_.number == number))
+
+  def findDigital(number: Int) = find[GpioPinDigitalOutput, ProvisionedDigitalPin](number, _.ppins) // board.flatMap(_.ppins.find(_.number == number))
+
+  def find[T <: GpioPin, U <: ProvisionedPin[T]](number: Int, f: PiRevB2 => Seq[U]): Option[U] =
+    board.flatMap(b => f(b).find(_.number == number))
 
   sealed trait PiMessage
 
-  case class Pwm(value: Int) extends PiMessage
+  case class Pwm(number: Int, value: Int) extends PiMessage
 
   case class DigitalOn(number: Int) extends PiMessage
 

@@ -1,4 +1,4 @@
-@(pins: Seq[PinInfo])(implicit request: RequestHeader)
+@(snap: com.mle.piweb.Snapshot)(implicit request: RequestHeader)
 
 @indexMain("home") {
     @bs.rowColumn("col-md-12") {
@@ -7,18 +7,27 @@
         </div>
     }
     <h3>PWM</h3>
-    <input id="pwm" type="range" name="pwm" min="0" max="255">
+    @snap.pwms.map { pwm =>
+        <h4>PIN @{pwm.number}</h4>
+        <input id="@{pwm.number}" type="range" name="pwm" min="0" max="1024" value="@{pwm.pwm}">
+    }
+    @if(snap.pwms.isEmpty){
+        <p class="lead">No PWM pins.</p>
+    }
     <h3>Digital</h3>
     <table class="table table-striped table-hover table-responsive">
         <thead>
             <tr><th>PIN</th><th>Enabled</th></tr>
         </thead>
         <tbody id="logTableBody">
-        @pins.map { pin =>
+        @snap.digitals.map { pin =>
             <tr><td>PIN @{pin.number}</td><td><input type="checkbox" onclick="onChecked(@{pin.number}, this.checked);"></td></tr>
         }
         </tbody>
     </table>
+    @if(snap.digitals.isEmpty){
+        <p class="lead">No digital pins.</p>
+    }
     @util.script2("pi.js")
     @wsopen(Home.wsUrl)
 }
