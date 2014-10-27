@@ -1,7 +1,7 @@
 APP_NAME=piweb
 APP_HOME=/opt/piweb
 APP_USER=piweb
-JAVA_OPTS="-piweb.home=/opt/piweb"
+JAVA_OPTS="-Dpiweb.home=/opt/piweb"
 JAVA_CMD=/usr/bin/java
 PID_FILE=/var/run/piweb.pid
 MAIN_CLASS=com.mle.piweb.Starter
