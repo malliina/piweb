@@ -1,4 +1,5 @@
 GET        /                    controllers.Home.index
+GET        /blaster             controllers.Home.blast
 GET        /logs                controllers.Logs.logs
 GET        /ws/pi               controllers.Home.openSocket
 GET        /ws/logs             controllers.Logs.openSocket
