@@ -15,7 +15,8 @@ var onmessage = function (payload) {
         prepend(event);
     }
 };
-// case class LogEvent(timeStamp: Long, timeFormatted: String, message: String, loggerName: String, threadName: String, level: Level)
+// case class LogEvent(timeStamp: Long, timeFormatted: String, message: String, loggerName: String, threadName: String, level: Level, stackTrace: Option[String])
+var rowCounter = 0;
 var prepend = function (e) {
     var trc;
     var level = e.level;
@@ -26,7 +27,26 @@ var prepend = function (e) {
     } else {
         trc = "";
     }
-    tableContent.prepend("<tr class=" + trc + "><td class='col-md-1'>" + e.timeFormatted + "</td><td>" + e.message + "</td><td>" + e.loggerName + "</td><td>" + e.threadName + "</td><td>" + e.level + "</td></tr>")
+    rowCounter += 1;
+    var levelContent = e.level;
+    if (e.stackTrace != null) {
+        tableContent.prepend("<tr style='display: none' id='row" + rowCounter + "'><td colspan='5'><pre>" + e.stackTrace + "</pre></td></tr>");
+        levelContent = "<a href='#' onclick='return toggle(" + rowCounter + ")'>" + levelContent + "</a>";
+    }
+    tableContent.prepend(
+            "<tr class=" + trc + ">" +
+            "<td class='col-md-1'>" + e.timeFormatted + "</td>" +
+            "<td>" + e.message + "</td>" +
+            "<td>" + e.loggerName + "</td>" +
+            "<td>" + e.threadName + "</td>" +
+            "<td>" + levelContent + "</td>" +
+            "</tr>")
+
+};
+var toggle = function (row) {
+    $("#row" + row).toggle();
+    // prevents returning to the top of the page
+    return false;
 };
 var onclose = function (payload) {
     setFeedback("Connection closed.");

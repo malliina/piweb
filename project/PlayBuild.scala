@@ -20,13 +20,13 @@ object PlayBuild extends Build {
 
   val mleGroup = "com.github.malliina"
   val commonSettings = remoteSettings ++ assemblySettings ++ SbtNativePackager.packagerSettings ++ LinuxPlugin.debianSettings ++ Seq(
-    version := "0.0.6",
+    version := "0.0.7",
     scalaVersion := "2.11.2",
     retrieveManaged := false,
     fork in Test := true,
     libraryDependencies ++= Seq(
       mleGroup %% "pi-utils" % "0.1.9",
-      mleGroup %% "play-base" % "0.1.2"),
+      mleGroup %% "play-base" % "0.1.3"),
     resolvers ++= Seq(
       "Typesafe releases" at "http://repo.typesafe.com/typesafe/releases/",
       "Sonatype releases" at "https://oss.sonatype.org/content/repositories/releases/"),
