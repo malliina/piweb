@@ -6,28 +6,29 @@
             <h1>Blaster <small class="pull-right" id="status">Initializing...</small></h1>
         </div>
     }
-    <button type="button" class="btn btn-default btn-lg" onclick="releaseAll();">Release All</button>
-    <span class="lead" id="feedback"></span>
-    <div id="blaster">
-        <table class="table table-striped table-hover table-responsive">
-            <thead>
-                <tr><th>PIN</th><th>PWM</th><th>Actions</th></tr>
-            </thead>
-            <tbody>
-            @pins.map { pin =>
-                <tr>
-                    <td style="vertical-align: middle" class="col-md-2 lead">PIN @{pin.boardNumber}</td>
-                    <td style="vertical-align: middle"><input id="@{pin.boardNumber}" type="range" name="pwm" min="0" max="@max" value="0" onchange="onBlast(this.id,this.value);"></td>
-                    <td style="vertical-align: middle" class="col-md-2"><button type="button" class="btn btn-primary btn-lg" onclick="release(@{pin.boardNumber});">Release</button></td>
-                </tr>
-            }
-            </tbody>
-        </table>
-    </div>
-    @if(pins.isEmpty){
-        <p class="lead">No PWM pins.</p>
+    @bs.rowColumn("col-md-12"){
+        <button type="button" class="btn btn-default btn-lg" onclick="releaseAll();">Release All</button>
+        <span class="lead" id="feedback"></span>
+        <div id="blaster">
+            <table class="table table-striped table-hover table-responsive">
+                <thead>
+                    <tr><th>PIN</th><th>PWM</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                @pins.map { pin =>
+                    <tr>
+                        <td style="vertical-align: middle" class="col-md-2 lead">PIN @{pin.boardNumber}</td>
+                        <td style="vertical-align: middle"><input id="@{pin.boardNumber}" type="range" name="pwm" min="0" max="@max" value="0" onchange="onBlast(this.id,this.value);"></td>
+                        <td style="vertical-align: middle" class="col-md-2"><button type="button" class="btn btn-primary btn-lg" onclick="release(@{pin.boardNumber});">Release</button></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        @if(pins.isEmpty){
+            <p class="lead">No PWM pins.</p>
+        }
     }
-    @util.script2("blaster.js")
-    @util.script2("pi.js")
-    @wsopen(Home.wsUrl)
+    @util.script2("blaster.js", "pi.js", "raphael-min.js", "colorwheel.js")
+    @util.wsopen(Home.wsUrl)
 }

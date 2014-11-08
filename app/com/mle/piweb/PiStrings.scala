@@ -1,0 +1,41 @@
+package com.mle.piweb
+
+/**
+ * @author Michael
+ */
+object PiStrings {
+  val MSG = "msg"
+  val PWM = "pwm"
+  val HW_PWM = "hw_pwm"
+  val BLAST_PWM = "blast_pwm"
+  val ON = "on"
+  val OFF = "off"
+  val VALUE = "value"
+  val NUMBER = "number"
+  val BLAST = "blast"
+  val RELEASE = "release"
+  val RELEASE_ALL = "release_all"
+  val RELEASED = "released"
+  val OPEN = "open"
+  val CLOSE = "close"
+  val OPENED = "opened"
+  val CLOSED = "closed"
+  val STATUS = "status"
+  val FEEDBACK = "feedback"
+  val PIN = "pin"
+  val ERROR = "error"
+  val MESSAGE = "message"
+  val DIGITAL = "digital"
+  val STATE = "state"
+  val HIGH = "high"
+  val LOW = "low"
+  val BOARD = "board"
+  val GPIO = "gpio"
+  val RGB = "rgb"
+  val RED = "red"
+  val GREEN = "green"
+  val BLUE = "blue"
+  val BRIGHTNESS = "brightness"
+  val BLASTER = "blaster"
+  val COLOR = "color"
+}

@@ -1,4 +1,6 @@
-GET        /                    controllers.Home.index
+GET        /                    controllers.Home.color
+GET        /color               controllers.Home.color
+GET        /digital             controllers.Home.digital
 GET        /blaster             controllers.Home.blast
 GET        /logs                controllers.Logs.logs
 GET        /ws/pi               controllers.Home.openSocket

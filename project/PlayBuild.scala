@@ -16,23 +16,24 @@ object PlayBuild extends Build {
   lazy val p = PlayProjects.plainPlayProject("piweb").settings(commonSettings: _*)
 
   val remoteRun = taskKey[Unit]("Builds a local jar, transfers it to a remote machine and runs it remotely")
+  val transferRemote = taskKey[String]("Transfers the binary to a remote machine, returning its remote filename")
   val conf = taskKey[RootRemoteInfo]("The config")
 
   val mleGroup = "com.github.malliina"
   val commonSettings = remoteSettings ++ assemblySettings ++ SbtNativePackager.packagerSettings ++ LinuxPlugin.debianSettings ++ Seq(
-    version := "0.0.7",
-    scalaVersion := "2.11.2",
+    version := "0.1.0",
+    scalaVersion := "2.11.4",
     retrieveManaged := false,
     fork in Test := true,
     libraryDependencies ++= Seq(
-      mleGroup %% "pi-utils" % "0.1.9",
-      mleGroup %% "play-base" % "0.1.3"),
+      mleGroup %% "pi-utils" % "0.3.2",
+      mleGroup %% "play-base" % "0.1.5"),
     resolvers ++= Seq(
       "Typesafe releases" at "http://repo.typesafe.com/typesafe/releases/",
       "Sonatype releases" at "https://oss.sonatype.org/content/repositories/releases/"),
     mainClass in assembly := Some("play.core.server.NettyServer"),
     fullClasspath in assembly += Attributed.blank(PlayKeys.playPackageAssets.value),
-    mergeStrategy in assembly <<= (mergeStrategy in assembly)(old => {
+    mergeStrategy in assembly <<= (mergeStrategy in assembly)((old:(String => MergeStrategy)) => {
       case "application.conf" =>
         MergeStrategy.concat
       case x if (x startsWith """org\apache\commons\logging""") || (x startsWith """play\core\server""") =>
@@ -45,22 +46,35 @@ object PlayBuild extends Build {
         old(x)
     })
   )
+
   def remoteSettings = Seq(
     conf := RemoteConfigReader.load,
+    transferRemote := {
+      val log = streams.value.log
+      val file = assembly.value.toPath
+      val remoteFileName = file.getFileName.toString
+      val conf = RemoteConfigReader.load
+      Utils.using(new SSH(conf.host, conf.port, conf.user, conf.key))(ssh => {
+        log info s"Transferring: ${file.toAbsolutePath} to: $remoteFileName at: ${conf.user}@${conf.host}:${conf.port}..."
+        ssh.scpAwait(file, remoteFileName)
+        log info s"Transfer done."
+        remoteFileName
+      })
+    },
     remoteRun := {
       val log = streams.value.log
       val file = assembly.value.toPath
       val remoteFileName = file.getFileName.toString
       val conf = RemoteConfigReader.load
       Utils.using(new SSH(conf.host, conf.port, conf.user, conf.key))(ssh => {
-        log.info(s"Transferring: ${file.toAbsolutePath} to: $remoteFileName at: ${conf.user}@${conf.host}:${conf.port}...")
+        log info s"Transferring: ${file.toAbsolutePath} to: $remoteFileName at: ${conf.user}@${conf.host}:${conf.port}..."
         ssh.scpAwait(file, remoteFileName)
         val runJarCommand = s"java -jar /home/${conf.user}/$remoteFileName"
-        log.info(s"Transfer done. Running: $runJarCommand as root...")
+        log info s"Transfer done. Running: $runJarCommand as root..."
         val response = ssh.execute("sudo -s -S", conf.rootPassword, runJarCommand, "exit")
         val sub = response.output.subscribe(line => log.info(line))
         val result = response.await(240.seconds)
-        log.info(s"Exit: ${result.exitValue}")
+        log info s"Exit: ${result.exitValue}"
         sub.unsubscribe()
       })
     }

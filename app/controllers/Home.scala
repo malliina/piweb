@@ -2,15 +2,19 @@ package controllers
 
 import com.mle.pi.PinEvents.{DigitalStateChanged, PwmChanged, Released}
 import com.mle.pi._
+import com.mle.piweb.PiMessages._
+import com.mle.piweb.PiStrings._
 import com.mle.piweb.Snapshot
 import com.mle.play.controllers.Streaming
-import com.mle.play.json.JsonStrings
+import com.mle.play.json.JsonStrings.EVENT
 import com.mle.util.TryImplicits.RichTry
 import com.pi4j.io.gpio.{GpioPin, GpioPinDigitalOutput, GpioPinPwmOutput, PinState}
 import play.api.libs.json.Json.{obj, toJson}
 import play.api.libs.json._
 import play.api.mvc._
+import play.twirl.api.Html
 import rx.lang.scala.Observable
+import rx.lang.scala.subjects.BehaviorSubject
 
 import scala.util.Try
 import scala.util.control.NonFatal
@@ -20,63 +24,35 @@ import scala.util.control.NonFatal
  * @author mle
  */
 object Home extends PiController with Streaming {
-
-  import com.mle.play.json.JsonStrings.EVENT
-
-  val MSG = "msg"
-  val PWM = "pwm"
-  val HW_PWM = "hw_pwm"
-  val BLAST_PWM = "blast_pwm"
-  val ON = "on"
-  val OFF = "off"
-  val VALUE = "value"
-  val NUMBER = "number"
-  val BLAST = "blast"
-  val RELEASE = "release"
-  val RELEASE_ALL = "release_all"
-  val RELEASED = "released"
-  val OPEN = "open"
-  val CLOSE = "close"
-  val OPENED = "opened"
-  val CLOSED = "closed"
-  val STATUS = "status"
-  val FEEDBACK = "feedback"
-  val PIN = "pin"
-  val ERROR = "error"
-  val MESSAGE = "message"
-  val DIGITAL = "digital"
-  val STATE = "state"
-  val HIGH = "high"
-  val LOW = "low"
-  val BOARD = "board"
-  val GPIO = "gpio"
-
   implicit val pinJson = new Writes[PinPlan] {
     override def writes(o: PinPlan): JsValue = obj(BOARD -> o.boardNumber, GPIO -> o.gpioNumber)
   }
-
-  val blaster = new Blaster
+  var board: Option[PiRevB2] = None
+  val defaultBlaster = new LEDBlaster(PiRevB2.PIN18, PiRevB2.PIN16, PiRevB2.PIN11)
+  val ledBlaster = BehaviorSubject[LEDBlaster](defaultBlaster)
+  val blaster = defaultBlaster
   val blasterPins = PiRevB2.pins
-  val blasterJson = blaster.events.map {
+  val brightnessEvents = blaster.brighty.map(b => obj(EVENT -> BRIGHTNESS, VALUE -> b.value))
+  val colorEvents = blaster.colory.map(c => obj(EVENT -> COLOR, VALUE -> toJson(c)))
+  val blasterEvents = blaster.events.map {
     case Released(gpio) =>
-      findPinGPIO(gpio)
-        .map(pin => obj(EVENT -> RELEASED, PIN -> Json.toJson(pin)))
-        .getOrElse(gpioNotFound(gpio))
+      tryFindGPIO(gpio)(pin => obj(EVENT -> RELEASED, PIN -> toJson(pin)))
     case PinEvents.Pwm(gpio, value) =>
-      findPinGPIO(gpio)
-        .map(pin => obj(EVENT -> BLAST_PWM, PIN -> toJson(pin), VALUE -> value))
-        .getOrElse(gpioNotFound(gpio))
+      tryFindGPIO(gpio)(pin => obj(EVENT -> BLAST_PWM, PIN -> toJson(pin), VALUE -> value))
     case PwmChanged(pin, value) =>
       obj(EVENT -> HW_PWM, PIN -> toJson(pin.backing.plan), VALUE -> value)
     case DigitalStateChanged(pin, state) =>
       obj(EVENT -> DIGITAL, PIN -> toJson(pin.backing.plan), STATE -> (if (state.isHigh) HIGH else LOW))
   }
 
+  def tryFindGPIO(gpioNumber: Int)(f: PinPlan => JsValue) =
+    findPinGPIO(gpioNumber).map(f) getOrElse gpioNotFound(gpioNumber)
+
   def gpioNotFound(gpio: Int) = obj(EVENT -> ERROR, MESSAGE -> s"Unable to find PIN with GPIO number: $gpio")
 
-  var board: Option[PiRevB2] = None
+  override def jsonEvents: Observable[JsValue] = blasterEvents merge brightnessEvents merge colorEvents
 
-  override def jsonEvents: Observable[JsValue] = blasterJson
+  def currentBlaster = ledBlaster.head.toBlocking.head
 
   def tryOpen(): Either[(String, Throwable), PiRevB2] =
     try Right(new PiRevB2)
@@ -96,7 +72,12 @@ object Home extends PiController with Streaming {
     broadcast(statusEvent)
   }
 
-  def statusEvent = event(board.fold(CLOSED)(_ => OPENED))
+  def statusEvent = obj(
+    EVENT -> STATUS,
+    BOARD -> board.fold(CLOSED)(_ => OPENED),
+    BLASTER -> toJson(blaster.status.map(kv => kv._1.boardNumber.toString -> kv._2)),
+    BRIGHTNESS -> blaster.currentBrightness,
+    COLOR -> blaster.currentColor)
 
   def errorMessage: PartialFunction[Throwable, (String, Throwable)] = {
     case e: Exception =>
@@ -116,24 +97,29 @@ object Home extends PiController with Streaming {
     b.ppins.map(prov => PinInfo(prov.boardNumber, prov.pin.getState, prov.enableState)),
     b.ppwms.map(pwm => PwmInfo(pwm.boardNumber, pwm.pwm))))
 
-  def index = Action(implicit req => {
-    Ok(views.html.digital(snapshot))
-  })
+  def digital = GoTo(implicit req => views.html.digital(snapshot))
 
-  def blast = Action(implicit req => {
-    Ok(views.html.blaster(blasterPins))
-  })
+  def blast = GoTo(implicit req => views.html.blaster(blasterPins))
+
+  def color = GoTo(implicit req => views.html.color())
+
+  def GoTo(page: RequestHeader => Html) = Action(implicit req => Ok(page(req)))
 
   override def openSocketCall: Call = routes.Home.openSocket
 
-  override def onMessage(msg: Message, client: Client): Unit = {
-    super.onMessage(msg, client)
-    log info s"Message: $msg"
-    parseMessage(msg) map (msg => handleMessage(msg, client)) recoverTotal (err => log.warn(s"Invalid JSON: $msg", err))
+  override def onMessage(msg: Message, client: Client): Boolean = {
+    val handled = super.onMessage(msg, client)
+    if (!handled) {
+      log info s"Message: $msg"
+      parseMessage(msg) map (msg => handleMessage(msg, client)) recoverTotal (err => log.warn(s"Invalid JSON: $msg", err))
+    }
+    true
   }
 
   def parseMessage(json: JsValue): JsResult[PiMessage] = (json \ MSG).validate[String].flatMap {
     case STATUS => JsSuccess(GetStatus)
+    case RGB => json.validate[Rgb]
+    case BRIGHTNESS => json.validate[Bright]
     case BLAST => json.validate[BlastPwm]
     case RELEASE => json.validate[Release]
     case RELEASE_ALL => JsSuccess(ReleaseAll)
@@ -150,21 +136,20 @@ object Home extends PiController with Streaming {
       sender.channel push statusEvent
     case Pwm(number, value) =>
       findPwm(number).foreach(_.pwm = value)
-      log info s"PIN: $number to PWM: $value."
+    case rgb: Rgb =>
+      withRecovery(blaster color rgb, sender)
+    case Bright(b) =>
+      withRecovery(blaster brightness b, sender)
     case Release(number) =>
       release(number, sender)
     case ReleaseAll =>
       blasterPins.foreach(p => release(p.boardNumber, sender))
     case BlastPwm(number, value) =>
-      blast(number, sender)(p => {
-        blaster.write(p, value).map(_ => log info s"Blasted PIN: $number to PWM: $value.")
-      })
+      blast(number, sender)(p => blaster.write(p, value))
     case DigitalOn(number) =>
       findDigital(number).foreach(_.enable())
-      log info s"On: $number"
     case DigitalOff(number) =>
       findDigital(number).foreach(_.disable())
-      log info s"Off: $number"
     case Close =>
       close(sender)
     case Open =>
@@ -176,12 +161,13 @@ object Home extends PiController with Streaming {
   })
 
   def blast(number: Int, client: Client)(f: PinPlan => Try[Unit]) = findPinBoard(number)
-    .fold(log.warn(s"Unable to find PIN with board number: $number."))(pin => {
-    f(pin).recoverAll(t => {
-      val msg = "Unable to blast."
-      log.warn(msg, t)
-      client.channel push feedback(msg)
-    })
+    .fold(log.warn(s"Unable to find PIN with board number: $number."))(pin => withRecovery(f(pin), client))
+
+  def withRecovery(blast: Try[Unit], client: Client) = blast.recoverAll(t => {
+    val error = Option(t.getMessage).getOrElse("")
+    val msg = s"Unable to blast."
+    log.warn(msg, t)
+    client.channel push feedback(s"$msg $error")
   })
 
   def findPinGPIO(gpioNumber: Int) = findPin(gpioNumber, _.gpioNumber)
@@ -198,37 +184,10 @@ object Home extends PiController with Streaming {
   def find[T <: GpioPin, U <: ProvisionedPin[T, _]](number: Int, f: PiRevB2 => Seq[U]): Option[U] =
     board.flatMap(b => f(b).find(_.boardNumber == number))
 
-  def event(e: String) = obj(JsonStrings.EVENT -> e)
+  def event(e: String) = obj(EVENT -> e)
 
   def feedback(fb: String) = event(FEEDBACK) ++ obj(FEEDBACK -> fb)
 
   def broadcastEvent(e: String) = broadcast(event(e))
-
-  sealed trait PiMessage
-
-  case class BlastPwm(number: Int, value: Int) extends PiMessage
-
-  case class Release(number: Int) extends PiMessage
-
-  case object ReleaseAll extends PiMessage
-
-  case class Pwm(number: Int, value: Int) extends PiMessage
-
-  case class DigitalOn(number: Int) extends PiMessage
-
-  case class DigitalOff(number: Int) extends PiMessage
-
-  case object Open extends PiMessage
-
-  case object Close extends PiMessage
-
-  case object GetStatus extends PiMessage
-
-  implicit val offJson = Json.format[DigitalOff]
-  implicit val onJson = Json.format[DigitalOn]
-  implicit val pwmJson = Json.format[Pwm]
-  implicit val blastJson = Json.format[BlastPwm]
-  implicit val relJson = Json.format[Release]
-
 }
 

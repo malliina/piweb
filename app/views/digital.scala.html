@@ -33,7 +33,6 @@
             <p class="lead">No digital pins.</p>
         }
     </div>
-    @util.script2("digital.js")
-    @util.script2("pi.js")
-    @wsopen(Home.wsUrl)
+    @util.script2("digital.js", "pi.js")
+    @util.wsopen(Home.wsUrl)
 }

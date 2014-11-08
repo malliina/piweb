@@ -12,6 +12,16 @@ var onClosed = function () {
     openBtn.show();
     digitalDiv.hide();
 };
+var onStatus = function (status) {
+    switch (status.board) {
+        case "opened":
+            onOpened();
+            break;
+        case "closed":
+            onClosed();
+            break;
+    }
+};
 var onHardwarePwm = function (boardNum, value) {
     $("#" + boardNum).val(value);
 };

@@ -8,11 +8,12 @@
                     <span class="icon-bar"></span>
                     <span class="icon-bar"></span>
                 </button>
-                <a class="navbar-brand" href="@routes.Home.index()">Home</a>
+                <a class="navbar-brand" href="@routes.Home.color()">Home</a>
             </div>
             <div class="navbar-collapse collapse">
                 <ul class="nav navbar-nav">
-                    @navItem("Digital", routes.Home.index(), "home")
+                    @navItem("Color", routes.Home.color(), "eye-open")
+                    @navItem("Digital", routes.Home.digital(), "barcode")
                     @navItem("Blaster", routes.Home.blast(), "globe")
                     @navItem("Logs", routes.Logs.logs(), "list")
                 </ul>

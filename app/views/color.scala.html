@@ -1,0 +1,22 @@
+@()(implicit request: RequestHeader)
+@import com.mle.pi.Brightness
+
+@indexMain("color") {
+    @bs.rowColumn("col-md-12") {
+        <div class="page-header">
+            <h1>LED <small class="pull-right" id="status">Connecting...</small></h1>
+        </div>
+    }
+    <div id="colorBody" style="display: none">
+        @bs.rowColumn("col-md-12") {
+            <div class="colorwheel horizontal-center"></div>
+            <h3>Brightness</h3>
+            <input id="brightness" type="range" name="brightness" min="0" max="@{Brightness.Max}" value="0" onchange="onBrightness(this.value);">
+        }
+        @bs.rowColumn("col-md-12") {
+            <span class="lead alert alert-warning" style="display: none" id="feedback"></span>
+        }
+    </div>
+    @util.script2("blaster.js", "pi.js", "raphael-min.js", "colorwheel.js")
+    @util.wsopen(Home.wsUrl)
+}

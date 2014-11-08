@@ -16,11 +16,12 @@ object Logs extends PiController with LogStreaming {
 
   override def openSocketCall: Call = routes.Logs.openSocket
 
-  override def onMessage(msg: Logs.Message, client: Logs.Client): Unit = {
+  override def onMessage(msg: Message, client: Client): Boolean = {
     try {
       super.onMessage(msg, client)
     } catch {
       case e: Exception => log.warn(s"Failure", e)
     }
+    true
   }
 }

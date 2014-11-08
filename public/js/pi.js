@@ -1,8 +1,10 @@
 var webSocket;
 
+var feedbackElem;
+
 var onconnect = function (payload) {
     sendCmd("subscribe");
-    setFeedback("Connected.");
+    setFeedback("Initializing...");
     sendMsg("status");
 };
 var onmessage = function (payload) {
@@ -16,11 +18,9 @@ var onmessage = function (payload) {
 // case class LogEvent(timeStamp: Long, timeFormatted: String, message: String, loggerName: String, threadName: String, level: Level)
 var handle = function (e) {
     switch (e.event) {
-        case "opened":
-            onOpened();
-            break;
-        case "closed":
-            onClosed();
+        case "status":
+            onStatus(e);
+            setFeedback("Connected.");
             break;
         case "digital":
             onDigitalStateChanged(e.pin.board, e.state);
@@ -31,12 +31,18 @@ var handle = function (e) {
         case "blast_pwm":
             onBlastChanged(e.pin.board, e.value);
             break;
+        case "color":
+            var color = e.value;
+            onColor(e.value);
+            break;
+        case "brightness":
+            onBrightnessChanged(e.value);
+            break;
         case "released":
             onReleased(e.pin.board);
             break;
         case "error":
             setErrorFeedback(e.message);
-//            onErrorMessage(e.message);
             break;
         case "feedback":
             setErrorFeedback(e.feedback);
@@ -55,7 +61,8 @@ var setFeedback = function (fb) {
     $('#status').html(fb);
 };
 var setErrorFeedback = function (fb) {
-    $("#feedback").html(fb);
+    feedbackElem.show();
+    feedbackElem.html(fb);
 };
 var send = function (json) {
     $("feedback").empty();
@@ -78,6 +85,16 @@ var onPwm = function (number, value) {
 var onBlast = function (number, value) {
     sendPwm("blast", number, value);
 };
+var onBrightness = function (brightness) {
+    send({msg: "brightness", value: parseInt(brightness)});
+};
+var onRgb = function (rgb) {
+//    alert(rgb.r);
+    send({msg: "rgb", red: rgb.r, green: rgb.g, blue: rgb.b});
+};
+var onRgb2 = function (rgb) {
+    send({msg: "rgb", red: parseInt(rgb.r), green: parseInt(rgb.g), blue: parseInt(rgb.b)});
+};
 var sendPwm = function (msg, number, value) {
     send({msg: msg, number: parseInt(number), value: parseInt(value)});
 };
@@ -93,3 +110,8 @@ var openDigital = function () {
 var closeDigital = function () {
     sendMsg("close");
 };
+
+$(document).ready(function () {
+    feedbackElem = $("#feedback");
+    feedbackElem.hide();
+});

@@ -1,6 +1,6 @@
 package com.mle.piweb
 
-import com.mle.pi.Blaster
+import com.mle.pi.{Blaster, PinPlan, PwmValue}
 
 import scala.collection.concurrent.TrieMap
 import scala.util.Try
@@ -9,11 +9,9 @@ import scala.util.Try
  * @author Michael
  */
 class MemoizingBlaster extends Blaster {
-  protected val memory = TrieMap.empty[Int, Int]
+  protected val memory = TrieMap.empty[PinPlan, PwmValue]
 
-  override def write(pin: Int, value: Int): Try[Unit] = super.write(pin, value).map(_ => memory.put(pin, value))
-
-  override def release(pin: Int): Try[Unit] = super.release(pin).map(_ => memory.put(pin, 0))
+  override def write(pin: PinPlan, value: PwmValue): Try[Unit] = super.write(pin, value).map(_ => memory.put(pin, value))
 
   def status = memory.toMap
 }
